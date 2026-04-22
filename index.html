@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Rảnh Của Chúng Mình</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>❤️ Lịch Rảnh</h1>
+            <p>Chốt kèo nhanh hơn</p>
+        </header>
+
+        <div class="app-content">
+            <!-- 1. Form Đăng ký -->
+            <section class="app-card main-form">
+                <form id="scheduleForm">
+                    <div class="compact-row">
+                        <select id="name" name="name" required>
+                            <option value="" disabled selected>Bạn là ai?</option>
+                            <option value="Anh">Anh</option>
+                            <option value="Em">Em</option>
+                        </select>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+
+                    <div id="slotList" class="slot-list"></div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="addSlotBtn" class="text-btn">➕ Thêm giờ</button>
+                        <select id="slot" class="quick-select">
+                            <option value="">-- Chọn nhanh --</option>
+                            <option value="08:00|2">Sáng (8h)</option>
+                            <option value="14:00|3">Chiều (14h)</option>
+                            <option value="19:00|3">Tối (19h)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <input type="text" id="note" name="note" placeholder="Hoạt động (cafe, ăn tối...)">
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="primary-btn">Lưu Lịch Rảnh</button>
+                    <div id="message" class="message"></div>
+                </form>
+            </section>
+
+            <!-- 2. Lịch tháng & Tổng hợp -->
+            <section class="app-card">
+                <div class="section-header">
+                    <h2>📅 Lịch Chung</h2>
+                    <button id="refreshBtn" class="icon-btn">🔄</button>
+                </div>
+                
+                <div class="calendar-mini">
+                    <div class="cal-nav">
+                        <button id="prevMonthBtn">◀</button>
+                        <span id="calendarMonthLabel">Tháng</span>
+                        <button id="nextMonthBtn">▶</button>
+                    </div>
+                    <div id="monthCalendar" class="month-calendar"></div>
+                    <div class="cal-legend">
+                        <span class="dot both"></span> Cả hai
+                        <span class="dot one"></span> Một người
+                    </div>
+                </div>
+
+                <div class="timeline-simple">
+                    <h3>⌛ Timeline rảnh chung</h3>
+                    <div id="overlapTimeline" class="timeline-wrapper"></div>
+                </div>
+            </section>
+
+            <!-- 3. Chi tiết & Quản lý -->
+            <section class="app-card">
+                <div class="section-header">
+                    <h2>� Chi tiết</h2>
+                    <div class="filters">
+                        <select id="filterPerson">
+                            <option value="all">Tất cả</option>
+                            <option value="Anh">Anh</option>
+                            <option value="Em">Em</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="schedule-cards-container" class="schedule-cards">
+                    <!-- Cards will be rendered here instead of table -->
+                    <div class="loading">Đang tải...</div>
+                </div>
+            </section>
+        </div>
+
+        <p class="footer-note">
+            Dữ liệu được đồng bộ trực tiếp với Google Sheet qua Apps Script.
+            Chỉ cần giữ đúng <code>SCRIPT_URL</code> trong file <code>script.js</code>.
+        </p>
+    </div>
+
+    <template id="slotRowTemplate">
+        <div class="slot-row">
+            <input type="time" class="slot-start" required>
+            <input type="number" class="slot-hours" min="0.5" max="24" step="0.5" placeholder="Giờ rảnh" required>
+            <button type="button" class="remove-slot-btn">×</button>
+        </div>
+    </template>
+
+    <div class="sr-only" aria-live="polite" id="liveRegion"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
