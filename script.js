@@ -92,6 +92,11 @@ function calculateHours(startTime, endTime) {
 function announce(message) {
     const region = document.getElementById('liveRegion');
     if (region) region.textContent = message;
+    
+    // Thêm rung nhẹ trên điện thoại nếu được hỗ trợ
+    if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(10);
+    }
 }
 
 function setMessage(type, text) {
