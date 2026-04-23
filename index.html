@@ -1,17 +1,56 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lịch Rảnh Của Chúng Mình</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="app-container">
         <header class="app-header">
-            <h1>❤️ Lịch Rảnh Của Chúng Mình</h1>
-            <p>Chốt kèo nhanh hơn</p>
+            <div class="header-main">
+                <h1>❤️ Lịch Rảnh Của Chúng Mình</h1>
+                <p>Dành cho anh và emmmm</p>
+            </div>
+            <button id="openSettingsBtn" class="icon-btn settings-btn" title="Cấu hình hệ thống">⚙️</button>
         </header>
+
+        <!-- Modal Cấu hình (Settings) -->
+        <div id="settingsModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚙️ Cấu hình hệ thống</h2>
+                    <button id="closeSettingsBtn" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="settings-hint">Dữ liệu được lưu an toàn trên trình duyệt của bạn (LocalStorage), không bị lộ khi đưa lên GitHub.</p>
+                    
+                    <div class="settings-group">
+                        <label for="settingScriptUrl">🔗 Google Script URL</label>
+                        <input type="text" id="settingScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+                    </div>
+
+                    <div class="settings-group">
+                        <label for="settingGeminiKey">💎 Gemini API Key</label>
+                        <input type="password" id="settingGeminiKey" placeholder="Dán API Key của Gemini">
+                    </div>
+
+                    <div class="settings-group">
+                        <label for="settingDeepSeekKey">🐋 DeepSeek API Key</label>
+                        <input type="password" id="settingDeepSeekKey" placeholder="Dán API Key của DeepSeek (tùy chọn)">
+                    </div>
+
+                    <div class="settings-actions">
+                        <button id="saveSettingsBtn" class="primary-btn">Lưu cấu hình</button>
+                        <button id="shareConfigBtn" class="secondary-btn">🔗 Gửi link cho người ấy</button>
+                    </div>
+                    <p id="settingsStatus" class="status-msg"></p>
+                </div>
+            </div>
+        </div>
 
         <div class="app-content">
             <!-- 1. Form Đăng ký -->
@@ -27,14 +66,41 @@
                     </div>
 
                     <div id="slotList" class="slot-list"></div>
-                    
+
                     <div class="form-actions">
                         <button type="button" id="addSlotBtn" class="text-btn">➕ Thêm giờ</button>
                         <select id="slot" class="quick-select">
-                            <option value="">-- Chọn nhanh --</option>
-                            <option value="08:00|2">Sáng (8h)</option>
-                            <option value="14:00|3">Chiều (14h)</option>
-                            <option value="19:00|3">Tối (19h)</option>
+                            <option value="">-- Chọn kiểu hẹn hò --</option>
+
+                            <optgroup label="☕ Nhẹ nhàng">
+                                <option value="07:00|2">☕ Cafe sáng chill (7h - 9h)</option>
+                                <option value="09:00|2">🥐 Ăn sáng + đi dạo (9h - 11h)</option>
+                                <option value="15:00|2">🍰 Cafe chiều (15h - 17h)</option>
+                            </optgroup>
+
+                            <optgroup label="🍽️ Ăn uống">
+                                <option value="11:00|2">🍜 Ăn trưa (11h - 13h)</option>
+                                <option value="18:00|2">🍛 Ăn tối nhẹ (18h - 20h)</option>
+                                <option value="19:00|3">🍲 Ăn tối + ngồi lâu (19h - 22h)</option>
+                            </optgroup>
+
+                            <optgroup label="🎬 Hẹn hò">
+                                <option value="14:00|3">🎬 Xem phim (14h - 17h)</option>
+                                <option value="19:00|3">🎥 Xem phim tối (19h - 22h)</option>
+                                <option value="20:00|2">🌃 Đi dạo tối (20h - 22h)</option>
+                            </optgroup>
+
+                            <optgroup label="🎡 Đi chơi ngoài">
+                                <option value="16:00|3">🌇 Ngắm hoàng hôn (16h - 19h)</option>
+                                <option value="17:00|3">🚶 Dạo phố + ăn vặt (17h - 20h)</option>
+                                <option value="18:00|3">🏍️ Chạy xe vòng vòng (18h - 21h)</option>
+                            </optgroup>
+
+                            <optgroup label="💕 Lãng mạn">
+                                <option value="18:00|3">🌹 Hẹn hò lãng mạn (18h - 21h)</option>
+                                <option value="19:00|2">🍷 Cafe đêm (19h - 21h)</option>
+                                <option value="20:00|3">✨ Đi chơi đêm (20h - 23h)</option>
+                            </optgroup>
                         </select>
                     </div>
 
@@ -53,7 +119,7 @@
                     <h2>📅 Lịch Chung</h2>
                     <button id="refreshBtn" class="icon-btn">🔄</button>
                 </div>
-                
+
                 <div class="calendar-mini">
                     <div class="cal-nav">
                         <button id="prevMonthBtn">◀</button>
@@ -71,6 +137,13 @@
                     <h3>⌛ Timeline rảnh chung</h3>
                     <div id="overlapTimeline" class="timeline-wrapper"></div>
                 </div>
+
+                <div class="ai-suggestion-box">
+                    <button id="aiSuggestBtn" class="ai-btn">✨ Gợi ý hẹn hò bằng AI</button>
+                    <div id="aiSuggestionResult" class="ai-result-content hidden">
+                        <!-- AI result will be rendered here -->
+                    </div>
+                </div>
             </section>
 
             <!-- 3. Chi tiết & Quản lý -->
@@ -85,7 +158,7 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <div id="schedule-cards-container" class="schedule-cards">
                     <!-- Cards will be rendered here instead of table -->
                     <div class="loading">Đang tải...</div>
@@ -94,8 +167,8 @@
         </div>
 
         <p class="footer-note">
-            Dữ liệu được đồng bộ trực tiếp với Google Sheet qua Apps Script.
-            Chỉ cần giữ đúng <code>SCRIPT_URL</code> trong file <code>script.js</code>.
+            🥰 Mỗi dòng lịch rảnh em điền vào, là một lời hứa hẹn về những buổi hẹn hò vui vẻ sắp tới.
+            <br>✨ Cảm ơn em vì đã xuất hiện để anh găp và được yêu em!
         </p>
     </div>
 
@@ -111,4 +184,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

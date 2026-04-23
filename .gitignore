@@ -1,0 +1,6 @@
+# GitHub Pages - ignore configuration files if any
+# but in this project we use localStorage for sensitive data
+# so we don't need to ignore much.
+.vscode/
+node_modules/
+.DS_Store
