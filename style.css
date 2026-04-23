@@ -65,6 +65,46 @@ body {
     background: #dfe4ea;
 }
 
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.game-btn {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid #fdcb6e;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(253, 203, 110, 0.3);
+}
+
+.game-btn:hover {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(253, 203, 110, 0.5);
+}
+
+.game-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(253, 203, 110, 0.3);
+}
+
+.game-icon {
+    font-size: 1.1rem;
+}
+
+.game-text {
+    color: #d63031;
+    font-weight: bold;
+}
+
 /* Modal Styles */
 .modal {
     position: fixed;
@@ -702,9 +742,6 @@ input:focus, select:focus {
 
 /* Utility */
 .sr-only { display: none; }
-    font-weight: bold;
-    min-height: 24px;
-}
 
 .message.success { color: #0f7c35; }
 .message.error { color: #c62828; }
