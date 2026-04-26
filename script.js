@@ -401,7 +401,7 @@ function renderOverlapTimeline() {
         if (overlaps.length === 0) return;
 
         const weekday = getWeekday(date);
-        const overlapTexts = overlaps.map(o => `<span>${toTimeString(o.start)} - ${toTimeString(o.end)}</span>`).join(', ');
+        const overlapTexts = overlaps.length > 0 ? overlaps.map(o => `<span>${toTimeString(o.start)} - ${toTimeString(o.end)}</span>`).join(', ') : 'Chưa có thời gian rảnh chung';
         
         html += `<div class="timeline-day">
             <div class="timeline-day-header">
@@ -802,14 +802,14 @@ function bindEvents() {
     // Settings Modal Events
     const openSettingsBtn = document.getElementById('openSettingsBtn');
     const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    const settingsForm = document.getElementById('settingsForm');
     const shareConfigBtn = document.getElementById('shareConfigBtn');
     const settingsModal = document.getElementById('settingsModal');
     const gameLinkBtn = document.getElementById('gameLinkBtn');
 
     if (openSettingsBtn) openSettingsBtn.addEventListener('click', () => toggleSettingsModal(true));
     if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => toggleSettingsModal(false));
-    if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', saveSettings);
+    if (settingsForm) settingsForm.addEventListener('submit', (e) => { e.preventDefault(); saveSettings(); });
     if (shareConfigBtn) shareConfigBtn.addEventListener('click', shareConfig);
     if (gameLinkBtn) gameLinkBtn.addEventListener('click', () => window.open('https://couple-question-game.vercel.app/', '_blank'));
     if (settingsModal) {

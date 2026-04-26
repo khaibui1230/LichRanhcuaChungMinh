@@ -34,25 +34,27 @@
                 <div class="modal-body">
                     <p class="settings-hint">Dữ liệu được lưu an toàn trên trình duyệt của bạn (LocalStorage), không bị lộ khi đưa lên GitHub.</p>
                     
-                    <div class="settings-group">
-                        <label for="settingScriptUrl">🔗 Google Script URL</label>
-                        <input type="text" id="settingScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
-                    </div>
+                    <form id="settingsForm">
+                        <div class="settings-group">
+                            <label for="settingScriptUrl">🔗 Google Script URL</label>
+                            <input type="text" id="settingScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+                        </div>
 
-                    <div class="settings-group">
-                        <label for="settingGeminiKey">💎 Gemini API Key</label>
-                        <input type="password" id="settingGeminiKey" placeholder="Dán API Key của Gemini">
-                    </div>
+                        <div class="settings-group">
+                            <label for="settingGeminiKey">💎 Gemini API Key</label>
+                            <input type="password" id="settingGeminiKey" placeholder="Dán API Key của Gemini">
+                        </div>
 
-                    <div class="settings-group">
-                        <label for="settingDeepSeekKey">🐋 DeepSeek API Key</label>
-                        <input type="password" id="settingDeepSeekKey" placeholder="Dán API Key của DeepSeek (tùy chọn)">
-                    </div>
+                        <div class="settings-group">
+                            <label for="settingDeepSeekKey">🐋 DeepSeek API Key</label>
+                            <input type="password" id="settingDeepSeekKey" placeholder="Dán API Key của DeepSeek (tùy chọn)">
+                        </div>
 
-                    <div class="settings-actions">
-                        <button id="saveSettingsBtn" class="primary-btn">Lưu cấu hình</button>
-                        <button id="shareConfigBtn" class="secondary-btn">🔗 Gửi link cho người ấy</button>
-                    </div>
+                        <div class="settings-actions">
+                            <button type="submit" id="saveSettingsBtn" class="primary-btn">Lưu cấu hình</button>
+                            <button type="button" id="shareConfigBtn" class="secondary-btn">🔗 Gửi link cho người ấy</button>
+                        </div>
+                    </form>
                     <p id="settingsStatus" class="status-msg"></p>
                 </div>
             </div>
