@@ -2,12 +2,66 @@
 let SCRIPT_URL = localStorage.getItem('vibe_script_url') || '';
 let GEMINI_API_KEY = localStorage.getItem('vibe_gemini_key') || '';
 let DEEPSEEK_API_KEY = localStorage.getItem('vibe_deepseek_key') || '';
+let ANNIVERSARY_DATE = localStorage.getItem('vibe_anniversary_date') || '';
+let BIRTHDAY_ANH = localStorage.getItem('vibe_birthday_anh') || '';
+let BIRTHDAY_EM = localStorage.getItem('vibe_birthday_em') || '';
+
+// Biến quản lý thông báo cho Notes
+let lastViewedNoteTime = localStorage.getItem('vibe_last_viewed_note_time') || 0;
 
 const MAX_BATCH_SLOTS = 5;
 const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 let scheduleData = [];
 let calendarCursor = new Date();
 let editingRecordId = null;
+let notesData = [];
+
+// DỮ LIỆU CÁC NGÀY ĐẶC BIỆT TRONG NĂM
+// Bạn có thể dễ dàng thêm hoặc sửa ngày ở đây (Định dạng: MM-DD)
+const SPECIAL_DAYS = [
+    // Sinh nhật & Kỷ niệm (Bạn hãy sửa lại cho đúng ngày của mình nhé)
+    { date: '01-01', title: 'Chúc mừng Năm Mới', emoji: '🎆', type: 'holiday', suggestion: 'Cùng nhau đi xem pháo hoa và đón giao thừa nhé! 🥂' },
+    { date: '02-14', title: 'Lễ Tình Nhân Valentine', emoji: '💝', type: 'holiday', suggestion: 'Một bữa tối lãng mạn dưới ánh nến và socola ngọt ngào. 🌹' },
+    { date: '03-08', title: 'Quốc tế Phụ nữ', emoji: '💃', type: 'holiday', suggestion: 'Dành tặng Em những lời chúc và món quà tuyệt vời nhất. 🎁' },
+    { date: '03-14', title: 'Valentine Trắng', emoji: '🤍', type: 'holiday', suggestion: 'Đáp lại tình cảm bằng những món quà màu trắng ý nghĩa.' },
+    { date: '04-30', title: 'Giải phóng Miền Nam', emoji: '🇻🇳', type: 'holiday', suggestion: 'Tận hưởng kỳ nghỉ lễ dài ngày bên nhau.' },
+    { date: '05-01', title: 'Quốc tế Lao động', emoji: '⚒️', type: 'holiday', suggestion: 'Cùng nhau đi du lịch ngắn ngày hoặc cafe chill.' },
+    { date: '06-01', title: 'Quốc tế Thiếu nhi', emoji: '🎈', type: 'holiday', suggestion: 'Cho "em bé" của Anh đi ăn kem và dạo phố nhé.' },
+    { date: '09-02', title: 'Quốc khánh Việt Nam', emoji: '🇻🇳', type: 'holiday', suggestion: 'Dạo phố phường rực rỡ cờ hoa.' },
+    { date: '10-20', title: 'Phụ nữ Việt Nam', emoji: '💐', type: 'holiday', suggestion: 'Tặng hoa và cùng nhau đi ăn món Em thích nhất.' },
+    { date: '10-31', title: 'Lễ hội Halloween', emoji: '🎃', type: 'holiday', suggestion: 'Hóa trang và đi chơi lễ hội hóa trang vui vẻ.' },
+    { date: '11-20', title: 'Nhà giáo Việt Nam', emoji: '👨‍🏫', type: 'holiday', suggestion: 'Tri ân những người thầy cô giáo cũ.' },
+    { date: '12-24', title: 'Lễ Giáng Sinh (Noel)', emoji: '🎄', type: 'holiday', suggestion: 'Đi nhà thờ ngắm hang đá và tận hưởng không khí lạnh.' }
+];
+
+// Hàm tính toán các mốc kỷ niệm (100, 200... 1000 ngày) dựa trên ngày yêu nhau
+function getLoveMilestones(startDateStr) {
+    if (!startDateStr) return [];
+    const start = new Date(startDateStr);
+    const milestones = [100, 200, 300, 400, 500, 1000, 2000, 3000, 5000];
+    const results = [];
+
+    milestones.forEach(days => {
+        const milestoneDate = new Date(start);
+        milestoneDate.setDate(start.getDate() + days);
+        
+        // Chuyển sang định dạng MM-DD để so khớp với tháng hiện tại
+        const mm = String(milestoneDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(milestoneDate.getDate()).padStart(2, '0');
+        const yyyy = milestoneDate.getFullYear();
+
+        results.push({
+            date: `${mm}-${dd}`,
+            fullDate: `${yyyy}-${mm}-${dd}`,
+            title: `Kỷ niệm ${days} ngày yêu nhau`,
+            emoji: '💝',
+            type: 'anniversary',
+            suggestion: `Mốc ${days} ngày thật tuyệt vời! Hãy dành cho nhau một món quà bất ngờ nhé. 🎁`
+        });
+    });
+
+    return results;
+}
 
 function toMinutes(timeStr) {
     if (!timeStr) return null;
@@ -155,13 +209,35 @@ function normalizeRecord(record) {
     };
 }
 
+// Hàm gửi dữ liệu POST tới Google Apps Script (Sửa lỗi CORS/Preflight)
 async function apiPost(payload) {
-    const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
+    try {
+        // GAS không hỗ trợ tốt preflight (OPTIONS) với application/json
+        // Gửi dưới dạng text/plain để tránh preflight mà vẫn xử lý được JSON ở GAS
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Mạng lỗi: ${response.status} ${response.statusText}`);
+        }
+
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Phản hồi từ server không phải JSON hợp lệ:', text);
+            throw new Error('Server phản hồi sai định dạng. Hãy kiểm tra Apps Script.');
+        }
+    } catch (error) {
+        console.error('Chi tiết lỗi API:', error);
+        throw error;
+    }
 }
 
 // Batch Add: mỗi ngày có thể thêm nhiều khung giờ.
@@ -348,11 +424,26 @@ function renderMonthCalendar() {
         const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const records = dateGroup[date] || [];
         const uniqueNames = [...new Set(records.map((item) => item.name))];
+        
+        // Kiểm tra xem ngày này có phải ngày đặc biệt không
+        const monthDayStr = `${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const loveMilestones = getLoveMilestones(ANNIVERSARY_DATE);
+        
+        let specialClass = '';
+        // Ưu tiên hiển thị: Sinh nhật > Kỷ niệm > Ngày lễ
+        if ((BIRTHDAY_ANH && BIRTHDAY_ANH.endsWith(monthDayStr)) || (BIRTHDAY_EM && BIRTHDAY_EM.endsWith(monthDayStr))) {
+            specialClass = 'sd-birthday-mark';
+        } else if (loveMilestones.some(m => m.fullDate === date)) {
+            specialClass = 'sd-anniversary-mark';
+        } else if (SPECIAL_DAYS.some(event => event.date === monthDayStr)) {
+            specialClass = 'sd-holiday-mark';
+        }
+
         let stateClass = 'none-free';
         if (uniqueNames.length === 2) stateClass = 'both-free';
         else if (uniqueNames.length === 1) stateClass = 'one-free';
         const todayClass = date === todayStr ? 'today' : '';
-        html += `<div class="calendar-day ${stateClass} ${todayClass}" data-date="${date}">${day}</div>`;
+        html += `<div class="calendar-day ${stateClass} ${todayClass} ${specialClass}" data-date="${date}">${day}</div>`;
     }
     monthCalendar.innerHTML = html;
 }
@@ -386,6 +477,9 @@ function segmentToStyle(segment) {
 function renderOverlapTimeline() {
     const container = document.getElementById('overlapTimeline');
     if (!container) return;
+
+    // Reset container trước khi vẽ lại
+    container.innerHTML = '';
 
     const byDate = groupByDate(scheduleData);
     const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a)); // Mới nhất lên đầu
@@ -438,6 +532,126 @@ function rerenderAllViews() {
     applyFiltersAndRender();
     renderMonthCalendar();
     renderOverlapTimeline();
+    renderLoveDashboard();
+    renderSpecialDays(); // Cập nhật danh sách ngày đặc biệt
+}
+
+// Hàm hiển thị danh sách ngày đặc biệt trong tháng
+function renderSpecialDays() {
+    const listContainer = document.getElementById('specialDaysList');
+    const monthLabel = document.getElementById('specialDaysMonthLabel');
+    if (!listContainer || !monthLabel) return;
+
+    const currentMonth = calendarCursor.getMonth() + 1; // 1-12
+    const currentMonthStr = String(currentMonth).padStart(2, '0');
+    const currentYear = calendarCursor.getFullYear();
+    monthLabel.textContent = `${currentMonth}/${currentYear}`;
+
+    // 1. Kết hợp ngày lễ cố định, mốc kỷ niệm và sinh nhật
+    const loveMilestones = getLoveMilestones(ANNIVERSARY_DATE);
+    
+    // Thêm sinh nhật Anh/Em vào danh sách hiển thị
+    const userBirthdays = [];
+    if (BIRTHDAY_ANH) {
+        const b = BIRTHDAY_ANH.split('-');
+        userBirthdays.push({ date: `${b[1]}-${b[2]}`, title: 'Sinh nhật Anh', emoji: '🎉', type: 'birthday', suggestion: 'Chúc mừng sinh nhật Anh! Hãy cùng nhau làm điều gì đó thật đặc biệt nhé. 🎂' });
+    }
+    if (BIRTHDAY_EM) {
+        const b = BIRTHDAY_EM.split('-');
+        userBirthdays.push({ date: `${b[1]}-${b[2]}`, title: 'Sinh nhật Em', emoji: '🎂', type: 'birthday', suggestion: 'Ngày quan trọng nhất của Em! Anh sẽ chuẩn bị một bất ngờ lớn dành cho Em. 💖' });
+    }
+
+    const allEvents = [...SPECIAL_DAYS, ...loveMilestones, ...userBirthdays];
+
+    // 2. Lọc các ngày trong tháng hiện tại
+    const monthEvents = allEvents.filter(event => {
+        // Nếu có fullDate (mốc kỷ niệm cụ thể), kiểm tra cả năm
+        if (event.fullDate) {
+            return event.fullDate.startsWith(`${currentYear}-${currentMonthStr}`);
+        }
+        // Nếu chỉ có date (ngày lễ hàng năm / sinh nhật), chỉ kiểm tra tháng
+        return event.date.startsWith(currentMonthStr);
+    });
+
+    if (monthEvents.length === 0) {
+        listContainer.innerHTML = '<div class="message info" style="font-size:0.85rem;">Tháng này không có ngày lễ hay kỷ niệm nào đặc biệt.</div>';
+        return;
+    }
+
+    // 3. Sắp xếp theo ngày
+    monthEvents.sort((a, b) => a.date.localeCompare(b.date));
+
+    let html = '';
+    monthEvents.forEach(event => {
+        const parts = event.date.split('-');
+        const eventMonth = parts[0];
+        const eventDay = parts[1];
+        html += `
+            <div class="special-day-item ${event.type}" onclick="this.classList.toggle('active')">
+                <div class="sd-date">${eventDay}/${eventMonth}</div>
+                <div class="sd-icon">${event.emoji}</div>
+                <div class="sd-content">
+                    <div class="sd-title">${event.title}</div>
+                    <div class="sd-suggestion">💡 Gợi ý: ${event.suggestion}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    listContainer.innerHTML = html;
+}
+
+function renderLoveDashboard() {
+    const daysTogetherEl = document.getElementById('daysTogether');
+    const daysToTetEl = document.getElementById('daysToTet');
+    const daysToHolidayEl = document.getElementById('daysToHoliday');
+    const holidayNameEl = document.getElementById('holidayName');
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // 1. Tính ngày bên nhau
+    if (ANNIVERSARY_DATE) {
+        const start = new Date(ANNIVERSARY_DATE);
+        start.setHours(0, 0, 0, 0);
+        const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+        daysTogetherEl.textContent = diff >= 0 ? diff : 0;
+    }
+
+    // 2. Tính ngày đến Tết Âm Lịch (Dự đoán cơ bản)
+    // Tết 2026: 17/02/2026
+    // Tết 2027: 06/02/2027
+    const tetDates = [
+        new Date('2025-01-29'),
+        new Date('2026-02-17'),
+        new Date('2027-02-06')
+    ];
+    let nextTet = tetDates.find(d => d > now);
+    if (nextTet) {
+        const diff = Math.ceil((nextTet - now) / (1000 * 60 * 60 * 24));
+        daysToTetEl.textContent = diff;
+    }
+
+    // 3. Tính ngày đến lễ gần nhất
+    const holidays = [
+        { name: 'Tết Dương Lịch', date: new Date(now.getFullYear(), 0, 1) },
+        { name: 'Giải phóng MN 30/4', date: new Date(now.getFullYear(), 3, 30) },
+        { name: 'Quốc tế Lao động 1/5', date: new Date(now.getFullYear(), 4, 1) },
+        { name: 'Quốc khánh 2/9', date: new Date(now.getFullYear(), 8, 2) },
+        { name: 'Giáng sinh 25/12', date: new Date(now.getFullYear(), 11, 25) }
+    ];
+    
+    // Nếu lễ năm nay đã qua, tính cho năm sau
+    holidays.forEach(h => {
+        if (h.date < now) h.date.setFullYear(now.getFullYear() + 1);
+    });
+
+    const nextHoliday = holidays.sort((a, b) => a.date - b.date).find(h => h.date >= now);
+    if (nextHoliday) {
+        const diff = Math.ceil((nextHoliday.date - now) / (1000 * 60 * 60 * 24));
+        daysToHolidayEl.textContent = diff;
+        holidayNameEl.textContent = `Đến ${nextHoliday.name}`;
+    }
 }
 
 async function loadSchedule() {
@@ -447,30 +661,366 @@ async function loadSchedule() {
         return;
     }
     
+    // Tải đồng thời lịch và ghi chú
+    Promise.all([fetchSchedule(), loadNotes()]);
+}
+
+async function fetchSchedule() {
     const container = document.getElementById('schedule-cards-container');
-    if (container) {
-        container.innerHTML = `
-            <div class="skeleton" style="height: 100px;"></div>
-            <div class="skeleton" style="height: 100px;"></div>
-            <div class="skeleton" style="height: 100px;"></div>
-        `;
-    }
+    if (!container) return;
+    
+    container.innerHTML = '<div class="loading">Đang tải lịch...</div>';
     
     try {
-        const response = await fetch(`${SCRIPT_URL}?action=list`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const rawRecords = Array.isArray(data) ? data : (data.data || []);
-        scheduleData = rawRecords.map(normalizeRecord).sort((a, b) => b.date.localeCompare(a.date) || a.startTime.localeCompare(b.startTime));
-
-        // Use requestAnimationFrame for smoother rendering
-        requestAnimationFrame(() => {
+        const data = await apiPost({ action: 'list' });
+        if (data && data.result === 'success') {
+            const rawRecords = Array.isArray(data.data) ? data.data : [];
+            scheduleData = rawRecords.map(normalizeRecord).sort((a, b) => b.date.localeCompare(a.date) || a.startTime.localeCompare(b.startTime));
             rerenderAllViews();
-        });
+        } else {
+            throw new Error(data.error || data.message || 'Lỗi server');
+        }
     } catch (error) {
-        console.error('Lỗi khi tải:', error);
-        if (container) container.innerHTML = '<div class="message error">Lỗi tải dữ liệu.</div>';
+        console.error('Lỗi tải lịch:', error);
+        container.innerHTML = `<div class="message error">❌ Không thể tải lịch. ${error.message.includes('Lỗi server') ? 'Vui lòng kiểm tra cấu hình.' : ''}</div>`;
     }
+}
+
+// Biến quản lý ghi chú mở rộng
+let noteFilters = {
+    author: 'all',
+    mood: 'all',
+    search: '',
+    sort: 'newest'
+};
+
+// --- LOGIC TABS ---
+function initTabs() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.getAttribute('data-tab');
+
+            // Cập nhật trạng thái nút
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Hiển thị nội dung tương ứng
+            tabContents.forEach(content => {
+                content.classList.toggle('active', content.id === targetTab);
+            });
+
+            // Nếu mở tab Notes, xóa thông báo
+            if (targetTab === 'notes-tab') {
+                markNotesAsRead();
+            }
+        });
+    });
+}
+
+function markNotesAsRead() {
+    if (notesData.length > 0) {
+        const latestTime = Math.max(...notesData.map(n => new Date(n.createdAt).getTime()));
+        lastViewedNoteTime = latestTime;
+        localStorage.setItem('vibe_last_viewed_note_time', latestTime);
+        updateNoteBadge();
+    }
+}
+
+function updateNoteBadge() {
+    const badge = document.getElementById('noteBadge');
+    if (!badge) return;
+
+    // Đếm số ghi chú mới (có thời gian createdAt lớn hơn thời gian xem cuối cùng)
+    const newNotesCount = notesData.filter(note => {
+        const noteTime = new Date(note.createdAt).getTime();
+        return noteTime > lastViewedNoteTime;
+    }).length;
+
+    if (newNotesCount > 0) {
+        badge.textContent = newNotesCount > 9 ? '9+' : newNotesCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// --- LOGIC SỔ TAY CẢM XÚC ---
+async function loadNotes() {
+    const listContainer = document.getElementById('notesList');
+    if (!listContainer) return;
+
+    try {
+        const data = await apiPost({ action: 'listNotes' });
+        if (data && data.result === 'success') {
+            notesData = Array.isArray(data.data) ? data.data : [];
+            renderNotes();
+            updateNoteBadge(); // Cập nhật badge sau khi tải xong ghi chú
+        } else {
+            throw new Error(data.error || data.message || 'Không thể tải ghi chú');
+        }
+    } catch (error) {
+        console.error('Lỗi tải ghi chú:', error);
+        listContainer.innerHTML = '<div class="message error">❌ Không thể tải ghi chú.</div>';
+    }
+}
+
+function renderNotes() {
+    const listContainer = document.getElementById('notesList');
+    if (!listContainer) return;
+
+    if (notesData.length === 0) {
+        listContainer.innerHTML = '<div class="message info">Chưa có lời nhắn nào. Hãy là người đầu tiên viết nhé! ❤️</div>';
+        return;
+    }
+
+    // 1. Áp dụng Lọc
+    let filtered = notesData.filter(note => {
+        const matchAuthor = noteFilters.author === 'all' || note.author === noteFilters.author;
+        const matchMood = noteFilters.mood === 'all' || note.mood === noteFilters.mood;
+        const matchSearch = !noteFilters.search || note.content.toLowerCase().includes(noteFilters.search.toLowerCase());
+        
+        // Kiểm tra lời nhắn tương lai
+        let isVisible = true;
+        if (note.isFuture && note.unlockDate) {
+            const unlock = new Date(note.unlockDate);
+            const now = new Date();
+            if (now < unlock) isVisible = false;
+        }
+
+        return matchAuthor && matchMood && matchSearch && isVisible;
+    });
+
+    // 2. Áp dụng Sắp xếp
+    filtered.sort((a, b) => {
+        if (noteFilters.sort === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+        if (noteFilters.sort === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+        if (noteFilters.sort === 'mood') return a.mood.localeCompare(b.mood);
+        return 0;
+    });
+
+    // 3. Render Timeline
+    listContainer.innerHTML = filtered.map(note => {
+        const timeStr = formatRelativeTime(note.createdAt);
+        const fullDateStr = new Date(note.createdAt).toLocaleDateString('vi-VN');
+        const likes = note.likes || 0;
+        const isRead = note.isRead || false;
+
+        return `
+            <div class="note-card" id="note-${note.id}">
+                <span class="note-time-label">${fullDateStr} • ${timeStr}</span>
+                <div class="note-header">
+                    <div class="note-meta">
+                        <span class="note-author ${note.author}">${note.author}</span>
+                        <span class="note-mood">${note.mood}</span>
+                    </div>
+                </div>
+                <div class="note-content">${formatMarkdownToHTML(note.content)}</div>
+                
+                <div class="note-footer-actions">
+                    <div class="interaction-btns">
+                        <button onclick="interactNote('${note.id}', 'like')" class="like-btn ${likes > 0 ? 'active' : ''}">
+                            ❤️ <span>${likes}</span>
+                        </button>
+                        <button onclick="interactNote('${note.id}', 'read')" class="read-btn ${isRead ? 'active' : ''}">
+                            👁️ <span>${isRead ? 'Đã xem' : 'Chưa xem'}</span>
+                        </button>
+                    </div>
+                    <div class="note-actions">
+                        <button onclick="editNote('${note.id}')" class="note-btn">Sửa</button>
+                        <button onclick="deleteNote('${note.id}')" class="note-btn delete">Xóa</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Cập nhật thống kê
+    renderMoodStats();
+}
+
+function renderMoodStats() {
+    const statsContainer = document.getElementById('moodStats');
+    if (!statsContainer) return;
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // Lọc note trong tháng này
+    const monthNotes = notesData.filter(n => {
+        const d = new Date(n.createdAt);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    if (monthNotes.length === 0) {
+        statsContainer.innerHTML = '<small>Chưa có dữ liệu cảm xúc tháng này.</small>';
+        return;
+    }
+
+    // Đếm mood
+    const counts = {};
+    monthNotes.forEach(n => {
+        counts[n.mood] = (counts[n.mood] || 0) + 1;
+    });
+
+    const total = monthNotes.length;
+    const moodColors = {
+        '❤️': '#ff4757', '😊': '#2ed573', '😢': '#1e90ff', 
+        '😞': '#747d8c', '🎁': '#ffa502', '🙏': '#eccc68',
+        '💔': '#ff6b81', '🌈': '#70a1ff'
+    };
+
+    statsContainer.innerHTML = Object.entries(counts).map(([mood, count]) => {
+        const percent = (count / total * 100).toFixed(0);
+        const color = moodColors[mood] || 'var(--primary)';
+        return `<div class="mood-stat-item" 
+                     style="width: ${percent}%; background: ${color}" 
+                     data-label="${mood} ${percent}% (${count})">
+                </div>`;
+    }).join('');
+}
+
+async function interactNote(id, type) {
+    const note = notesData.find(n => n.id === id);
+    if (!note) return;
+
+    const payload = { action: 'updateNote', id: id };
+    
+    if (type === 'like') {
+        payload.likes = (note.likes || 0) + 1;
+    } else if (type === 'read') {
+        payload.isRead = true;
+    }
+
+    try {
+        const data = await apiPost(payload);
+        if (data && data.result === 'success') {
+            // Cập nhật local và render lại
+            if (type === 'like') note.likes = payload.likes;
+            if (type === 'read') note.isRead = true;
+            renderNotes();
+        }
+    } catch (error) {
+        console.error('Lỗi tương tác:', error);
+    }
+}
+
+async function submitNote(e) {
+    e.preventDefault();
+    const id = document.getElementById('noteId').value;
+    const author = document.getElementById('noteAuthor').value;
+    const mood = document.getElementById('noteMood').value;
+    const content = document.getElementById('noteContent').value.trim();
+    const isFuture = document.getElementById('noteIsFuture').checked;
+    const unlockDate = document.getElementById('noteUnlockDate').value;
+    const saveBtn = document.getElementById('saveNoteBtn');
+
+    if (!author || !content) return;
+    if (isFuture && !unlockDate) {
+        alert('Vui lòng chọn ngày mở lời nhắn tương lai!');
+        return;
+    }
+
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Đang gửi...';
+
+    const action = id ? 'updateNote' : 'createNote';
+    const payload = { 
+        action, author, mood, content,
+        isFuture, unlockDate
+    };
+    if (id) payload.id = id;
+
+    try {
+        const data = await apiPost(payload);
+        if (data && data.result === 'success') {
+            resetNoteForm();
+            loadNotes();
+            announce(id ? 'Đã cập nhật lời nhắn!' : 'Đã gửi lời nhắn mới!');
+        } else {
+            // Hiển thị chi tiết lỗi nếu server trả về
+            const errorMsg = data ? (data.error || data.message || 'Server không phản hồi kết quả thành công.') : 'Lỗi kết nối server.';
+            throw new Error(errorMsg);
+        }
+    } catch (error) {
+        console.error('Lỗi khi gửi note:', error);
+        alert('❌ Lỗi gửi lời nhắn: ' + error.message + '\n\n(Hãy đảm bảo bạn đã cập nhật mã Apps Script mới nhất)');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+    }
+}
+
+window.editNote = function(id) {
+    const note = notesData.find(n => n.id === id);
+    if (!note) return;
+
+    document.getElementById('noteId').value = note.id;
+    document.getElementById('noteAuthor').value = note.author;
+    document.getElementById('noteMood').value = note.mood;
+    const contentArea = document.getElementById('noteContent');
+    contentArea.value = note.content;
+    
+    // Tự động giãn chiều cao khi edit
+    setTimeout(() => {
+        contentArea.style.height = 'auto';
+        contentArea.style.height = contentArea.scrollHeight + 'px';
+    }, 0);
+    
+    document.getElementById('saveNoteBtn').textContent = 'Cập nhật';
+    document.getElementById('cancelNoteEditBtn').classList.remove('hidden');
+    
+    document.getElementById('notesSection').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.deleteNote = async function(id) {
+    if (!confirm('Bạn có chắc muốn xóa lời nhắn này không?')) return;
+
+    try {
+        const data = await apiPost({ action: 'deleteNote', id });
+        if (data && data.result === 'success') {
+            loadNotes();
+            announce('Đã xóa lời nhắn.');
+        } else {
+            throw new Error(data ? (data.error || data.message || 'Lỗi khi xóa') : 'Lỗi kết nối server.');
+        }
+    } catch (error) {
+        console.error('Lỗi khi xóa note:', error);
+        alert('Lỗi khi xóa: ' + error.message);
+    }
+};
+
+function resetNoteForm() {
+    document.getElementById('noteId').value = '';
+    const contentArea = document.getElementById('noteContent');
+    contentArea.value = '';
+    contentArea.style.height = 'auto'; // Reset chiều cao
+    document.getElementById('noteIsFuture').checked = false;
+    document.getElementById('noteUnlockDate').value = '';
+    document.getElementById('noteUnlockDate').classList.add('hidden');
+    document.getElementById('saveNoteBtn').textContent = 'Gửi lời nhắn';
+    document.getElementById('cancelNoteEditBtn').classList.add('hidden');
+}
+
+function formatRelativeTime(isoString) {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'Vừa xong';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút trước`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
+    
+    return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
 async function submitForm(event) {
@@ -493,20 +1043,21 @@ async function submitForm(event) {
     try {
         const slots = collectBatchSlots();
         
-        // Optimistic UI: Prepare local update (optional, but let's at least clear form fast)
         const result = await apiPost({ action: 'createBatch', name, date, note, slots });
-        if (result.result !== 'success') throw new Error(result.error || 'Không thể lưu.');
-
-        setMessage('success', '✅ Đã lưu thành công!');
-        
-        // Reset form immediately
-        form.reset();
-        document.getElementById('date').value = date; // Keep the same date for convenience
-        document.getElementById('slotList').innerHTML = '';
-        addSlotRow();
-        
-        // Reload in background
-        loadSchedule();
+        if (result && result.result === 'success') {
+            setMessage('success', '✅ Đã lưu thành công!');
+            
+            // Reset form immediately
+            form.reset();
+            document.getElementById('date').value = date; // Keep the same date for convenience
+            document.getElementById('slotList').innerHTML = '';
+            addSlotRow();
+            
+            // Reload in background
+            loadSchedule();
+        } else {
+            throw new Error(result ? (result.error || result.message || 'Không thể lưu.') : 'Lỗi kết nối server.');
+        }
     } catch (error) {
         console.error('Lỗi khi lưu:', error);
         setMessage('error', `❌ ${error.message}`);
@@ -681,7 +1232,7 @@ async function callGeminiPro(prompt) {
 // Hàm đơn giản để chuyển đổi markdown từ AI sang HTML (xử lý xuống dòng, in đậm)
 function formatMarkdownToHTML(text) {
     if (!text) return '';
-    return text
+    return String(text)
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // In đậm **text**
         .replace(/\*(.*?)\*/g, '<em>$1</em>')            // In nghiêng *text*
         .replace(/\n/g, '<br>');                           // Xuống dòng
@@ -696,6 +1247,9 @@ function toggleSettingsModal(show) {
         document.getElementById('settingScriptUrl').value = SCRIPT_URL;
         document.getElementById('settingGeminiKey').value = GEMINI_API_KEY;
         document.getElementById('settingDeepSeekKey').value = DEEPSEEK_API_KEY;
+        document.getElementById('settingAnniversaryDate').value = ANNIVERSARY_DATE;
+        document.getElementById('settingBirthdayAnh').value = BIRTHDAY_ANH;
+        document.getElementById('settingBirthdayEm').value = BIRTHDAY_EM;
     }
 }
 
@@ -703,6 +1257,9 @@ function saveSettings() {
     const url = document.getElementById('settingScriptUrl').value.trim();
     const gemini = document.getElementById('settingGeminiKey').value.trim();
     const deepseek = document.getElementById('settingDeepSeekKey').value.trim();
+    const anniversary = document.getElementById('settingAnniversaryDate').value;
+    const birthdayAnh = document.getElementById('settingBirthdayAnh').value;
+    const birthdayEm = document.getElementById('settingBirthdayEm').value;
     const status = document.getElementById('settingsStatus');
 
     if (!url) {
@@ -715,11 +1272,17 @@ function saveSettings() {
     localStorage.setItem('vibe_script_url', url);
     localStorage.setItem('vibe_gemini_key', gemini);
     localStorage.setItem('vibe_deepseek_key', deepseek);
+    localStorage.setItem('vibe_anniversary_date', anniversary);
+    localStorage.setItem('vibe_birthday_anh', birthdayAnh);
+    localStorage.setItem('vibe_birthday_em', birthdayEm);
 
     // Cập nhật biến toàn cục
     SCRIPT_URL = url;
     GEMINI_API_KEY = gemini;
     DEEPSEEK_API_KEY = deepseek;
+    ANNIVERSARY_DATE = anniversary;
+    BIRTHDAY_ANH = birthdayAnh;
+    BIRTHDAY_EM = birthdayEm;
 
     status.className = 'status-msg success';
     status.textContent = '✅ Đã lưu cấu hình!';
@@ -741,7 +1304,10 @@ function shareConfig() {
     const config = {
         u: SCRIPT_URL,
         g: GEMINI_API_KEY,
-        d: DEEPSEEK_API_KEY
+        d: DEEPSEEK_API_KEY,
+        a: ANNIVERSARY_DATE,
+        ba: BIRTHDAY_ANH,
+        be: BIRTHDAY_EM
     };
 
     // Mã hóa base64 đơn giản để gửi qua URL
@@ -769,11 +1335,17 @@ function checkUrlConfig() {
                 localStorage.setItem('vibe_script_url', decoded.u);
                 localStorage.setItem('vibe_gemini_key', decoded.g || '');
                 localStorage.setItem('vibe_deepseek_key', decoded.d || '');
+                localStorage.setItem('vibe_anniversary_date', decoded.a || '');
+                localStorage.setItem('vibe_birthday_anh', decoded.ba || '');
+                localStorage.setItem('vibe_birthday_em', decoded.be || '');
                 
                 // Cập nhật biến hiện tại
                 SCRIPT_URL = decoded.u;
                 GEMINI_API_KEY = decoded.g || '';
                 DEEPSEEK_API_KEY = decoded.d || '';
+                ANNIVERSARY_DATE = decoded.a || '';
+                BIRTHDAY_ANH = decoded.ba || '';
+                BIRTHDAY_EM = decoded.be || '';
 
                 // Xóa tham số trên URL cho sạch sẽ
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -825,31 +1397,95 @@ function bindEvents() {
     if (filterPerson) filterPerson.addEventListener('change', applyFiltersAndRender);
     if (aiSuggestBtn) aiSuggestBtn.addEventListener('click', getAISuggestions);
     
+    // Notes Events
+    const noteForm = document.getElementById('noteForm');
+    const cancelNoteEditBtn = document.getElementById('cancelNoteEditBtn');
+    if (noteForm) noteForm.addEventListener('submit', submitNote);
+    if (cancelNoteEditBtn) cancelNoteEditBtn.addEventListener('click', resetNoteForm);
+
+    // Advanced Notes Events
+    const noteSearch = document.getElementById('noteSearch');
+    const filterNoteAuthor = document.getElementById('filterNoteAuthor');
+    const filterNoteMood = document.getElementById('filterNoteMood');
+    const sortNote = document.getElementById('sortNote');
+    const noteIsFuture = document.getElementById('noteIsFuture');
+
+    if (noteSearch) {
+        noteSearch.addEventListener('input', (e) => {
+            noteFilters.search = e.target.value;
+            renderNotes();
+        });
+    }
+    if (filterNoteAuthor) {
+        filterNoteAuthor.addEventListener('change', (e) => {
+            noteFilters.author = e.target.value;
+            renderNotes();
+        });
+    }
+    if (filterNoteMood) {
+        filterNoteMood.addEventListener('change', (e) => {
+            noteFilters.mood = e.target.value;
+            renderNotes();
+        });
+    }
+    if (sortNote) {
+        sortNote.addEventListener('change', (e) => {
+            noteFilters.sort = e.target.value;
+            renderNotes();
+        });
+    }
+    if (noteIsFuture) {
+        noteIsFuture.addEventListener('change', (e) => {
+            const dateInput = document.getElementById('noteUnlockDate');
+            if (dateInput) {
+                dateInput.classList.toggle('hidden', !e.target.checked);
+                if (e.target.checked) {
+                    const nextWeek = new Date();
+                    nextWeek.setDate(nextWeek.getDate() + 7);
+                    dateInput.value = nextWeek.toISOString().split('T')[0];
+                }
+            }
+        });
+    }
+
+    const noteContent = document.getElementById('noteContent');
+    if (noteContent) {
+        noteContent.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+
     if (prevMonthBtn) {
         prevMonthBtn.addEventListener('click', () => {
             calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
-            renderMonthCalendar();
+            rerenderAllViews();
         });
     }
     if (nextMonthBtn) {
         nextMonthBtn.addEventListener('click', () => {
             calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
-            renderMonthCalendar();
+            rerenderAllViews();
         });
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkUrlConfig(); // Kiểm tra cấu hình từ URL đầu tiên
-    const dateInput = document.getElementById('date');
-    if (dateInput) {
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
-        dateInput.value = todayStr;
-        dateInput.min = todayStr; // Ngăn chọn ngày trong quá khứ
-    }
+    try {
+        checkUrlConfig(); // Kiểm tra cấu hình từ URL đầu tiên
+        initTabs(); // Khởi tạo tính năng Tab
+        const dateInput = document.getElementById('date');
+        if (dateInput) {
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            dateInput.value = todayStr;
+            dateInput.min = todayStr; // Ngăn chọn ngày trong quá khứ
+        }
 
-    bindEvents();
-    addSlotRow();
-    loadSchedule();
+        bindEvents();
+        addSlotRow();
+        loadSchedule();
+    } catch (error) {
+        console.error('Lỗi khởi tạo ứng dụng:', error);
+    }
 });

@@ -15,14 +15,25 @@
                 <h1>❤️ Lịch Rảnh Của Chúng Mình</h1>
                 <p>Dành cho anh và emmmm</p>
             </div>
-            <div class="header-buttons">
-                <button id="gameLinkBtn" class="game-btn" title="Chơi trò chơi đôi lứa">
-                    <span class="game-icon">🎮</span>
-                    <span class="game-text">Couple Game</span>
-                </button>
-                <button id="openSettingsBtn" class="icon-btn settings-btn" title="Cấu hình hệ thống">⚙️</button>
-            </div>
+            <button id="openSettingsBtn" class="icon-btn settings-btn" title="Cấu hình hệ thống">⚙️</button>
         </header>
+
+        <!-- Thanh điều hướng Tab -->
+        <nav class="app-tabs">
+            <button class="tab-btn active" data-tab="calendar-tab">
+                <span class="tab-icon">📅</span>
+                <span class="tab-label">Lịch rảnh</span>
+            </button>
+            <button class="tab-btn" data-tab="notes-tab">
+                <span class="tab-icon">📖</span>
+                <span class="tab-label">Sổ tay</span>
+                <span id="noteBadge" class="notification-badge hidden">0</span>
+            </button>
+            <button class="tab-btn" data-tab="events-tab">
+                <span class="tab-icon">📌</span>
+                <span class="tab-label">Sự kiện</span>
+            </button>
+        </nav>
 
         <!-- Modal Cấu hình (Settings) -->
         <div id="settingsModal" class="modal hidden">
@@ -50,6 +61,22 @@
                             <input type="password" id="settingDeepSeekKey" placeholder="Dán API Key của DeepSeek (tùy chọn)">
                         </div>
 
+                        <div class="settings-group">
+                            <label for="settingAnniversaryDate">📅 Ngày bắt đầu gặp nhau</label>
+                            <input type="date" id="settingAnniversaryDate">
+                        </div>
+
+                        <div class="compact-row">
+                            <div class="settings-group">
+                                <label for="settingBirthdayAnh">🎂 Sinh nhật Anh</label>
+                                <input type="date" id="settingBirthdayAnh">
+                            </div>
+                            <div class="settings-group">
+                                <label for="settingBirthdayEm">🎂 Sinh nhật Em</label>
+                                <input type="date" id="settingBirthdayEm">
+                            </div>
+                        </div>
+
                         <div class="settings-actions">
                             <button type="submit" id="saveSettingsBtn" class="primary-btn">Lưu cấu hình</button>
                             <button type="button" id="shareConfigBtn" class="secondary-btn">🔗 Gửi link cho người ấy</button>
@@ -61,117 +88,254 @@
         </div>
 
         <div class="app-content">
-            <!-- 1. Form Đăng ký -->
-            <section class="app-card main-form">
-                <form id="scheduleForm">
-                    <div class="compact-row">
-                        <select id="name" name="name" required>
+            <!-- 0. Góc Kỷ Niệm (Luôn hiện ở đầu cho ấm cúng) -->
+            <section class="app-card love-dashboard">
+                <!-- ... nội dung dashboard ... -->
+                <div class="dashboard-grid">
+                    <div class="dashboard-item anniversary">
+                        <span class="dash-icon">💖</span>
+                        <div class="dash-info">
+                            <span id="daysTogether">0</span>
+                            <small>Ngày bên nhau</small>
+                        </div>
+                    </div>
+                    <div class="dashboard-item countdown-tet">
+                        <span class="dash-icon">🧧</span>
+                        <div class="dash-info">
+                            <span id="daysToTet">0</span>
+                            <small>Đến Tết Âm</small>
+                        </div>
+                    </div>
+                    <div class="dashboard-item countdown-holiday">
+                        <span class="dash-icon">🎉</span>
+                        <div class="dash-info">
+                            <span id="daysToHoliday">0</span>
+                            <small id="holidayName">Đến lễ</small>
+                        </div>
+                    </div>
+                    <a href="https://couple-question-game.vercel.app/" target="_blank" class="dashboard-item game-link">
+                        <span class="dash-icon">🎮</span>
+                        <div class="dash-info">
+                            <span>Trò chơi</span>
+                            <small>Kết nối ❤️</small>
+                        </div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Tab 1: Lịch rảnh -->
+            <div id="calendar-tab" class="tab-content active">
+                <!-- 1. Form Đăng ký -->
+                <section class="app-card main-form">
+                    <form id="scheduleForm">
+                        <div class="compact-row">
+                            <select id="name" name="name" required>
+                                <option value="" disabled selected>Bạn là ai?</option>
+                                <option value="Anh">Anh</option>
+                                <option value="Em">Em</option>
+                            </select>
+                            <input type="date" id="date" name="date" required>
+                        </div>
+
+                        <div id="slotList" class="slot-list"></div>
+
+                        <div class="form-actions">
+                            <button type="button" id="addSlotBtn" class="text-btn">➕ Thêm giờ</button>
+                            <select id="slot" class="quick-select">
+                                <option value="">-- Chọn kiểu hẹn hò --</option>
+
+                                <optgroup label="☕ Nhẹ nhàng">
+                                    <option value="07:00|2">☕ Cafe sáng chill (7h - 9h)</option>
+                                    <option value="09:00|2">🥐 Ăn sáng + đi dạo (9h - 11h)</option>
+                                    <option value="15:00|2">🍰 Cafe chiều (15h - 17h)</option>
+                                </optgroup>
+
+                                <optgroup label="🍽️ Ăn uống">
+                                    <option value="11:00|2">🍜 Ăn trưa (11h - 13h)</option>
+                                    <option value="18:00|2">🍛 Ăn tối nhẹ (18h - 20h)</option>
+                                    <option value="19:00|3">🍲 Ăn tối + ngồi lâu (19h - 22h)</option>
+                                </optgroup>
+
+                                <optgroup label="🎬 Hẹn hò">
+                                    <option value="14:00|3">🎬 Xem phim (14h - 17h)</option>
+                                    <option value="19:00|3">🎥 Xem phim tối (19h - 22h)</option>
+                                    <option value="20:00|2">🌃 Đi dạo tối (20h - 22h)</option>
+                                </optgroup>
+
+                                <optgroup label="🎡 Đi chơi ngoài">
+                                    <option value="16:00|3">🌇 Ngắm hoàng hôn (16h - 19h)</option>
+                                    <option value="17:00|3">🚶 Dạo phố + ăn vặt (17h - 20h)</option>
+                                    <option value="18:00|3">🏍️ Chạy xe vòng vòng (18h - 21h)</option>
+                                </optgroup>
+
+                                <optgroup label="💕 Lãng mạn">
+                                    <option value="18:00|3">🌹 Hẹn hò lãng mạn (18h - 21h)</option>
+                                    <option value="19:00|2">🍷 Cafe đêm (19h - 21h)</option>
+                                    <option value="20:00|3">✨ Đi chơi đêm (20h - 23h)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 15px;">
+                            <input type="text" id="note" name="note" placeholder="Hoạt động (cafe, ăn tối...)">
+                        </div>
+
+                        <button type="submit" id="submitBtn" class="primary-btn">Lưu Lịch Rảnh</button>
+                        <div id="message" class="message"></div>
+                    </form>
+                </section>
+
+                <!-- 2. Lịch tháng & Tổng hợp -->
+                <section class="app-card">
+                    <div class="section-header">
+                        <h2>📅 Lịch Chung</h2>
+                        <button id="refreshBtn" class="icon-btn">🔄</button>
+                    </div>
+
+                    <div class="calendar-mini">
+                        <div class="cal-nav">
+                            <button id="prevMonthBtn">◀</button>
+                            <span id="calendarMonthLabel">Tháng</span>
+                            <button id="nextMonthBtn">▶</button>
+                        </div>
+                        <div id="monthCalendar" class="month-calendar"></div>
+                        <div class="cal-legend">
+                            <span class="dot both"></span> Cả hai
+                            <span class="dot one"></span> Một người
+                        </div>
+                    </div>
+
+                    <div class="timeline-simple">
+                        <h3>⌛ Timeline rảnh chung</h3>
+                        <div id="overlapTimeline" class="timeline-wrapper"></div>
+                    </div>
+                </section>
+
+                <!-- 3. Chi tiết & Quản lý -->
+                <section class="app-card">
+                    <div class="section-header">
+                        <h2>📋 Chi tiết</h2>
+                        <div class="filters">
+                            <select id="filterPerson">
+                                <option value="all">Tất cả</option>
+                                <option value="Anh">Anh</option>
+                                <option value="Em">Em</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="schedule-cards-container" class="schedule-cards">
+                        <!-- Cards will be rendered here instead of table -->
+                        <div class="loading">Đang tải...</div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Tab 2: Sổ tay cảm xúc -->
+            <div id="notes-tab" class="tab-content">
+                <section id="notesSection" class="app-card notes-section">
+                    <div class="section-header">
+                        <h2>📖 Sổ tay cảm xúc</h2>
+                    </div>
+                    <p class="section-desc">Nơi lưu giữ những lời nhắn nhủ, kỷ niệm buồn vui...</p>
+
+                    <form id="noteForm" class="note-form">
+                        <input type="hidden" id="noteId">
+                        <div class="compact-row">
+                        <select id="noteAuthor" required>
                             <option value="" disabled selected>Bạn là ai?</option>
                             <option value="Anh">Anh</option>
                             <option value="Em">Em</option>
                         </select>
-                        <input type="date" id="date" name="date" required>
-                    </div>
-
-                    <div id="slotList" class="slot-list"></div>
-
-                    <div class="form-actions">
-                        <button type="button" id="addSlotBtn" class="text-btn">➕ Thêm giờ</button>
-                        <select id="slot" class="quick-select">
-                            <option value="">-- Chọn kiểu hẹn hò --</option>
-
-                            <optgroup label="☕ Nhẹ nhàng">
-                                <option value="07:00|2">☕ Cafe sáng chill (7h - 9h)</option>
-                                <option value="09:00|2">🥐 Ăn sáng + đi dạo (9h - 11h)</option>
-                                <option value="15:00|2">🍰 Cafe chiều (15h - 17h)</option>
-                            </optgroup>
-
-                            <optgroup label="🍽️ Ăn uống">
-                                <option value="11:00|2">🍜 Ăn trưa (11h - 13h)</option>
-                                <option value="18:00|2">🍛 Ăn tối nhẹ (18h - 20h)</option>
-                                <option value="19:00|3">🍲 Ăn tối + ngồi lâu (19h - 22h)</option>
-                            </optgroup>
-
-                            <optgroup label="🎬 Hẹn hò">
-                                <option value="14:00|3">🎬 Xem phim (14h - 17h)</option>
-                                <option value="19:00|3">🎥 Xem phim tối (19h - 22h)</option>
-                                <option value="20:00|2">🌃 Đi dạo tối (20h - 22h)</option>
-                            </optgroup>
-
-                            <optgroup label="🎡 Đi chơi ngoài">
-                                <option value="16:00|3">🌇 Ngắm hoàng hôn (16h - 19h)</option>
-                                <option value="17:00|3">🚶 Dạo phố + ăn vặt (17h - 20h)</option>
-                                <option value="18:00|3">🏍️ Chạy xe vòng vòng (18h - 21h)</option>
-                            </optgroup>
-
-                            <optgroup label="💕 Lãng mạn">
-                                <option value="18:00|3">🌹 Hẹn hò lãng mạn (18h - 21h)</option>
-                                <option value="19:00|2">🍷 Cafe đêm (19h - 21h)</option>
-                                <option value="20:00|3">✨ Đi chơi đêm (20h - 23h)</option>
-                            </optgroup>
+                        <select id="noteMood" required>
+                            <option value="❤️">❤️ Yêu</option>
+                            <option value="😊">😊 Vui</option>
+                            <option value="😢">😢 Buồn</option>
+                            <option value="😞">😞 Xin lỗi</option>
+                            <option value="🎁">🎁 Bất ngờ</option>
+                            <option value="🙏">🙏 Biết ơn</option>
+                            <option value="💔">💔 Giận dỗi</option>
+                            <option value="🌈">🌈 Hy vọng</option>
                         </select>
                     </div>
-
-                    <div class="form-group" style="margin-top: 15px;">
-                        <input type="text" id="note" name="note" placeholder="Hoạt động (cafe, ăn tối...)">
+                    <div class="form-group" style="margin-top: 10px;">
+                        <textarea id="noteContent" placeholder="Nhập lời nhắn nhủ tại đây..." required rows="3"></textarea>
                     </div>
-
-                    <button type="submit" id="submitBtn" class="primary-btn">Lưu Lịch Rảnh</button>
-                    <div id="message" class="message"></div>
+                    <div class="future-message-row" style="margin-top: 10px;">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="noteIsFuture">
+                            <span class="checkmark"></span>
+                            💌 Hẹn ngày mở
+                        </label>
+                        <input type="date" id="noteUnlockDate" class="hidden">
+                    </div>
+                    <div class="form-actions" style="margin-top: 10px;">
+                        <button type="submit" id="saveNoteBtn" class="primary-btn">Gửi lời nhắn</button>
+                        <button type="button" id="cancelNoteEditBtn" class="text-btn hidden">Hủy sửa</button>
+                    </div>
                 </form>
-            </section>
 
-            <!-- 2. Lịch tháng & Tổng hợp -->
-            <section class="app-card">
-                <div class="section-header">
-                    <h2>📅 Lịch Chung</h2>
-                    <button id="refreshBtn" class="icon-btn">🔄</button>
+                <!-- Thống kê & Bộ lọc -->
+                <div class="notes-analytics">
+                    <h3>📊 Thống kê cảm xúc tháng này</h3>
+                    <div id="moodStats" class="mood-stats-bar"></div>
                 </div>
 
-                <div class="calendar-mini">
-                    <div class="cal-nav">
-                        <button id="prevMonthBtn">◀</button>
-                        <span id="calendarMonthLabel">Tháng</span>
-                        <button id="nextMonthBtn">▶</button>
+                <div class="notes-controls">
+                    <div class="search-box">
+                        <input type="text" id="noteSearch" placeholder="Tìm nội dung lời nhắn...">
                     </div>
-                    <div id="monthCalendar" class="month-calendar"></div>
-                    <div class="cal-legend">
-                        <span class="dot both"></span> Cả hai
-                        <span class="dot one"></span> Một người
-                    </div>
-                </div>
-
-                <div class="timeline-simple">
-                    <h3>⌛ Timeline rảnh chung</h3>
-                    <div id="overlapTimeline" class="timeline-wrapper"></div>
-                </div>
-
-                <div class="ai-suggestion-box">
-                    <button id="aiSuggestBtn" class="ai-btn">✨ Gợi ý hẹn hò bằng AI</button>
-                    <div id="aiSuggestionResult" class="ai-result-content hidden">
-                        <!-- AI result will be rendered here -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- 3. Chi tiết & Quản lý -->
-            <section class="app-card">
-                <div class="section-header">
-                    <h2>� Chi tiết</h2>
-                    <div class="filters">
-                        <select id="filterPerson">
-                            <option value="all">Tất cả</option>
+                    <div class="filter-row">
+                        <select id="filterNoteAuthor">
+                            <option value="all">Tất cả tác giả</option>
                             <option value="Anh">Anh</option>
                             <option value="Em">Em</option>
                         </select>
+                        <select id="filterNoteMood">
+                            <option value="all">Tất cả Mood</option>
+                            <option value="❤️">❤️ Yêu</option>
+                            <option value="😊">😊 Vui</option>
+                            <option value="😢">😢 Buồn</option>
+                            <option value="😞">😞 Xin lỗi</option>
+                            <option value="🎁">🎁 Bất ngờ</option>
+                        </select>
+                        <select id="sortNote">
+                            <option value="newest">Mới nhất</option>
+                            <option value="oldest">Cũ nhất</option>
+                            <option value="mood">Theo Mood</option>
+                        </select>
                     </div>
                 </div>
 
-                <div id="schedule-cards-container" class="schedule-cards">
-                    <!-- Cards will be rendered here instead of table -->
-                    <div class="loading">Đang tải...</div>
+                <div id="notesList" class="notes-list timeline-mode">
+                    <!-- Danh sách ghi chú sẽ render dạng timeline ở đây -->
+                    <div class="loading">Đang tải ghi chú...</div>
                 </div>
-            </section>
+                </section>
+            </div>
+
+            <!-- Tab 3: Sự kiện & AI -->
+            <div id="events-tab" class="tab-content">
+                <!-- 📌 Những ngày đặc biệt trong tháng -->
+                <section class="app-card">
+                    <div class="special-days-section">
+                        <h3>📌 Sự kiện trong tháng <span id="specialDaysMonthLabel"></span></h3>
+                        <div id="specialDaysList" class="special-days-list">
+                            <!-- Danh sách ngày đặc biệt sẽ render ở đây -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Gợi ý AI -->
+                <section id="aiSection" class="app-card ai-section">
+                    <div class="ai-suggestion-box">
+                        <button id="aiSuggestBtn" class="ai-btn">✨ Gợi ý hẹn hò bằng AI</button>
+                        <div id="aiSuggestionResult" class="ai-result-content hidden">
+                            <!-- AI result will be rendered here -->
+                        </div>
+                    </div>
+                </section>
+            </div>
         </div>
 
         <p class="footer-note">
